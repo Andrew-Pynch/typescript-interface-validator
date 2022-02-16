@@ -1,50 +1,146 @@
-export interface IPerson {
-    name: string;
-    age: number;
-    weight: number;
-}
+import { EDataType } from "./edata-types";
+import { ISchemaOption } from "./ISchemaOption";
+import { isBool, isInt, isString, maxLength, minLength, notEmpty } from "./validators";
 
-export function createKeys<T>(keyRecord: Record<keyof T, any>): (keyof T)[] {
-    return Object.keys(keyRecord) as any;
-}
+export const Validate = (payload: any, validationSchema: any) => {
+  let arr = {};
 
-export function validator<T>(type: T): true | string[] {
-    const errors: string[] = [];
+  //loop through each validation key that was passed through
+  Object.entries(validationSchema).forEach(([key, valStr]: any) => {
+    let x = payload[key]; // x = value from the payload
+    let isValid: any = true;
+    let errArr = [];
 
-    const keys = createKeys<T>(type);
+    let required = valStr.indexOf("required") >= 0;
 
-    for (const key of keys) {
-        const value = type[key];
-        const expectedType = typeof type[key];
-        switch (expectedType) {
-            case 'string':
-                if (!value || typeof value !== expectedType) {
-                    errors.push(
-                        `${key} is required and is not ${expectedType}`
-                    );
-                }
-                break;
+    //if we have a schema like required|string,
+    //split by | and loop through each validator
 
-            case 'number' || 'boolean':
-                if (!value || typeof value !== expectedType) {
-                    errors.push(
-                        `${key} is required and is not ${expectedType}`
-                    );
-                }
-            default:
-                if (!value) {
-                    errors.push(`${key} is required`);
-                }
-        }
+    valStr.split("|").forEach((call: string) => {
+      let res: any = true;
+      let paramValue = null;
+
+      //if we passed through a custom parameter like minLength[10],
+      //set the paramValue = 10 and call = minLength
+      if (call.indexOf("[") >= 0) {
+        paramValue = call
+          .slice(call.indexOf("["), call.indexOf("]") + 1)
+          .replace("[", "")
+          .replace("]", "");
+        call = call.replace(`[${paramValue}]`, "");
+      }
+
+      switch (call) {
+        case "required":
+          res = notEmpty(x, key);
+          break;
+        case "string":
+          res = isString(x, key);
+          break;
+        case "number":
+          res = isInt(x, key);
+          break;
+        case "boolean":
+          res = isBool(x, key);
+          break;
+        case "maxLength":
+          res = maxLength(x, key, paramValue);
+          break;
+        case "minLength":
+          res = minLength(x, key, paramValue);
+          break;
+      }
+
+      if (res !== true) {
+        errArr.push(res);
+        isValid = errArr;
+      }
+    });
+
+    arr[key] = isValid === true ? isValid : errArr;
+  });
+
+  //filter out any passing validation to see if we have errors
+  let errs = Object.entries(arr).filter(([a, b]) => b !== true);
+
+  //return true if all valid, or return all caught errors
+  return errs.length == 0 ? true : errs;
+};
+
+export const DataValidator = (payload: any, schemaOptions: ISchemaOption[]) => {
+  const results = [];
+
+  schemaOptions.map((schemaOption: ISchemaOption) => {
+    const key = schemaOption.key;
+    const value = payload[key] ?? null; // value from payload
+
+    if (schemaOption.required) {
+      results.push(notEmpty(value, key));
     }
 
-    return errors.length > 0 ? errors : true;
-}
+    if (!value) {
+      //type checking
+      switch (schemaOption.type) {
+        case EDataType.STRING:
+          results.push(isString(value, key));
+          break;
+        case EDataType.NUMBER:
+          results.push(isInt(value, key));
+          break;
+        case EDataType.BOOLEAN:
+          results.push(isBool(value, key));
+          break;
+        default:
+          break;
+      }
+    }
+  });
 
-const person: IPerson = {
-    name: '',
-    age: 18,
-    weight: 185,
+  const filteredResults = results.filter((e) => e !== true);
+  return filteredResults.length == 0 ? true : filteredResults;
 };
-const isValid = validator<IPerson>(person);
-console.log(isValid);
+
+const payload = {
+  name: "andrew",
+  age: "21",
+  // boy: true,
+};
+
+const schema = [
+  {
+    key: "name",
+    required: true,
+    type: EDataType.STRING,
+  },
+  {
+    key: "age",
+    required: true,
+    type: EDataType.NUMBER,
+  },
+  {
+    key: "gender",
+    required: false,
+    type: EDataType.STRING,
+  },
+  {
+    key: "alive",
+    required: false,
+    type: EDataType.BOOLEAN,
+  },
+];
+
+const result = DataValidator(payload, schema);
+console.log("RESULT", result);
+
+// const schema = {
+//   name: "required|string|maxLength[10]|minLength[3]",
+//   age: "required|number",
+//   boy: "optional|boolean",
+//   weight: "number|max[300]|required"
+// };
+
+// name.notEmpty().isString().length({max: 10})
+// name: [SchemaOptions.notEmpty, SchemaOptions.isString]
+
+// let isValid = Validate(payload, schema);
+// console.log(isValid);
