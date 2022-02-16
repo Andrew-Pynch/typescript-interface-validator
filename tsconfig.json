@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "outDir": "lib",
+        "outDir": "node_modules/lib",
         "target": "es5",
         "module": "esnext",
         "lib": ["es2015"],
@@ -18,6 +18,10 @@
         "declaration": true,
         "esModuleInterop": true
     },
-    "include": ["src"],
-    "exclude": ["node_modules", "lib", "**/*.test.ts"]
+    "include": ["src", "test"]
+    // "exclude": [
+    //     "node_modules",
+    //     "lib"
+    //     // "**/*.test.ts"
+    // ]
 }

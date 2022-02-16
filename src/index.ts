@@ -8,7 +8,7 @@ export function createKeys<T>(keyRecord: Record<keyof T, any>): (keyof T)[] {
     return Object.keys(keyRecord) as any;
 }
 
-export function validator<T>(type: T): true | string[] {
+export function InterfaceValidator<T>(type: T): true | string[] {
     const errors: string[] = [];
 
     const keys = createKeys<T>(type);
