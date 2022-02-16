@@ -40,11 +40,3 @@ export function validator<T>(type: T): true | string[] {
 
     return errors.length > 0 ? errors : true;
 }
-
-const person: IPerson = {
-    name: '',
-    age: 18,
-    weight: 185,
-};
-const isValid = validator<IPerson>(person);
-console.log(isValid);
